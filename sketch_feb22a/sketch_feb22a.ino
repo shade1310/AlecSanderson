@@ -39,8 +39,7 @@ void loop() {
   //2D array to store IR LED values as 'high' or 'low'
   int frame2[sizex][sizey];
   //these store the information in frame2 to be sent to the RGB matrix
-  long spiValue = 0;
-  //long spiValue2;
+  long spiValue[4];
   //setThreshold count and boolean values    
   
 
@@ -127,15 +126,34 @@ void loop() {
         frame2[2*i + 1][2*j] = 1;
         frame2[2*i][2*j + 1] = 1;
         frame2[2*i + 1][2*j + 1] = 1;
-          spiValue |= 1;
         }
-       
-        if (j != 3 | i != 3)
-            spiValue = spiValue << 1;
       }
     }
-    Serial.println(spiValue, BIN);
- 
+    for ( i = 0; i < sizex; i++)
+      for (j = 0; j <sizey; j++)
+      {
+        if (i < 2)
+        {
+          spiValue[0] = frame2[i][j];
+          spiValue[0] = spiValue[0] >> 1;
+        }
+        else if(i < 4)
+        {
+          spiValue[1] = frame2[i][j];
+          spiValue[1] = spiValue[1] >> 1;
+        }
+        else if(i < 6)
+        {
+          spiValue[2] = frame2[i][j];
+          spiValue[2] = spiValue[2] >> 1;
+        }
+        else
+        {
+          spiValue[3] = frame2[i][j];
+          spiValue[3] = spiValue[3] >> 1;
+        }
+      }
+
  //if a high value was detected resets the count
 
   //no high values were detected, increments the count
