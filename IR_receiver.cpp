@@ -1,7 +1,7 @@
 #include <msp430.h>
 #include <IR_receiver.h>
 #include <energia.h>
-#define SERIAL
+//#define SERIAL
 
 // the setup routine runs once when you press reset:
 IR_receiver::IR_receiver() {
@@ -25,6 +25,7 @@ void IR_receiver::IR_get(unsigned int spiValue[], int &threshold, int &threshcou
   int frame[sizex][sizey];
   //2D array to store IR LED values as 'high' or 'low'
   int frame2[sizex][sizey];
+  int threshold2;
   //these store the information in frame2 to be sent to the RGB matrix
 
   //setThreshold count and boolean values
@@ -36,13 +37,14 @@ void IR_receiver::IR_get(unsigned int spiValue[], int &threshold, int &threshcou
   //shift register loop
   for (int i = 0; i < sizex; i++)
   {
+    //delayMicroseconds(5);
     //Shift register stores a value
     P2OUT |= BIT7;
-    delayMicroseconds(10);
+    //delayMicroseconds(5);
     //shift register shifts in the value stored from BIT7
     //it also shifts all other values to the left
     P2OUT |= BIT6;
-    delayMicroseconds(10);
+    //delayMicroseconds(5);
     //sending the shift register a 0 for next time
     P1OUT &= ~BIT6;
     //setting the 'clock' signals low for next time
@@ -51,7 +53,6 @@ void IR_receiver::IR_get(unsigned int spiValue[], int &threshold, int &threshcou
     //multiplexer loop
     for (int j = 0; j < sizey;j++)
     {
-      delayMicroseconds(10);
       //Sets A, B, and C to low
       P2OUT &= ~BIT3 + ~BIT4 + ~BIT5;
       if ((j % 2) == 1)
@@ -71,37 +72,46 @@ void IR_receiver::IR_get(unsigned int spiValue[], int &threshold, int &threshcou
         P2OUT |= BIT5;
       }
 
-      //reads in 7 samples from the reciever
-      delayMicroseconds(5);
-      sensorValue = analogRead(A7);
-      delayMicroseconds(5);
-      sensorValue += analogRead(A7);
-      delayMicroseconds(5);
-      sensorValue += analogRead(A7);
+      //delayMicroseconds(5)
 
-      //averages the samples and stores them in the array
-      frame[i][j] = sensorValue/3;
-      delayMicroseconds(5);
+      frame[i][j] = analogRead(A7);
+    //  for(j = 0; j <sizey; j++)
+    //  {
+        if ( j == 0)
+          threshold2 = 580;
+        else if (j == 1)
+          threshold2 = 380;
+        else if (j == 2)
+        threshold2 = 210;
+        else if (j == 3)
+        threshold2 = 130;
+        else if (j == 4)
+        threshold2 = 75;
+        else if (j == 5)
+        threshold2 = 60;
+        else
+          threshold2 = 35;
 
-    }
+       if (frame[i][j] < (threshold2) && frame[i][j] > 4)
+       {
+           frame2[i][j] = 1;
+       }
+       else
+       {
+          //low value detected
+          frame2[i][j] = 0;
+       }
+    //}
   }
   //sets threshhold boolean to low
-  for (i = 0; i <sizex; i++)
-  {
-    for(j = 0; j <sizey; j++)
-    {
-     if (frame[i][j] < threshold && frame[i][j] > 4)
-     {
-         frame2[i][j] = 1;
-     }
-     else
-     {
-        //low value detected
-        frame2[i][j] = 0;
-     }
+  //for (i = 0; i <sizex; i++)
+  //{
+
+
+
      //shifts through storing values in the long int
 
-  }
+  //}
   }
   for (i = 0; i <4; i++)
   {
@@ -120,32 +130,33 @@ void IR_receiver::IR_get(unsigned int spiValue[], int &threshold, int &threshcou
         }
       }
     }
-
-    for(j = 0;j < 8; j++)
+      int spicount = 0;
+    for(j = 7;j > -1; j--)
     {
       for(i = 0; i < 8; i++)
       {
-        if (j < 2 ){
-          //if (i != 7 || j != 6)
-          spiValue[0] = spiValue[0] << 1;
-          spiValue[0] += frame2[i][j];
-
-        }else if(j < 4){
-        //  if (i != 7 || j != 4)
+        if (spicount < 16){
+          //if (spicount != 0)
           spiValue[1] = spiValue[1] << 1;
           spiValue[1] += frame2[i][j];
 
-        }else if(j < 6){
-        //  if (i != 7 || j != 2)
-          spiValue[2] = spiValue[2] << 1;
-          spiValue[2] += frame2[i][j];
+        }else if(spicount < 32){
+          //if (spicount != 16)
+          spiValue[0] = spiValue[0] << 1;
+          spiValue[0] += frame2[i][j];
 
-        }else{
-        //  if (i != 7 || j != 0)
+        }else if(spicount < 48){
+          //if (spicount != 32)
           spiValue[3] = spiValue[3] << 1;
           spiValue[3] += frame2[i][j];
 
+        }else{
+          //if (spicount != 48)
+          spiValue[2] = spiValue[2] << 1;
+          spiValue[2] += frame2[i][j];
+
         }
+        spicount++;
       }
     }
 
@@ -157,8 +168,8 @@ void IR_receiver::IR_get(unsigned int spiValue[], int &threshold, int &threshcou
    //if twenty cycles go by with no high values, calls setThreshold
   if (threshcount == numcycle)
   {
-    setThreshold(frame, threshold, threshcount);
-    threshcount = 0;
+    //setThreshold(frame, threshold, threshcount);
+    //threshcount = 0;
   }
 
   //Prints the output to serial
@@ -169,7 +180,7 @@ void IR_receiver::IR_get(unsigned int spiValue[], int &threshold, int &threshcou
       //Serial.print(frame[i][j]);
       //Serial.print("\t");
       #ifdef SERIAL
-      Serial.print(frame2[i][j]);
+      Serial.print(frame[i][j]);
       Serial.print("\t");
       #endif
 
@@ -197,13 +208,13 @@ void IR_receiver::setThreshold(int frame[][sizey], int &threshold, int &threshco
   {
     for(j = 0; j <sizey; j++)
     {
-      if (frame[i][j] > threshold && frame[i][j] > 4)
+      if (frame[i][j] > (threshold))
       {
       value += frame[i][j];
       count++;
       }
     }
   }
-  threshold = value/count - threshval;
-  //threshold = 200;
+  //threshold = value/count - threshval;
+  threshold = 20;
 }
